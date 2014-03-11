@@ -13,7 +13,7 @@ ssize_t readn(int fd, void *buf, size_t count) {
         } else if (-1 == bytes_read) {
             return -1;
         } else if (0 == bytes_read) {
-            break;
+            return total_bytes_read;
         }
 
         total_bytes_read += bytes_read;

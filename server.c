@@ -10,6 +10,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -31,9 +32,13 @@ int main() {
 
     struct addrinfo hints, *result;
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
+    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_STREAM; /* Datagram socket */
+    hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+    hints.ai_protocol = 0;          /* Any protocol */
+    hints.ai_canonname = NULL;
+    hints.ai_addr = NULL;
+    hints.ai_next = NULL;
     int ret = getaddrinfo(NULL, SERVICE, &hints, &result);
     if (ret != 0) {
         syslog(LOG_EMERG, "getaddrinfo %s", gai_strerror(ret));
@@ -45,15 +50,18 @@ int main() {
     for (p = result; p != NULL; p = p->ai_next) {
         server_fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
         if (-1 == server_fd) {
+            syslog(LOG_INFO, "socket %s", strerror(errno));
             continue;
         }
 
         if (bind(server_fd, p->ai_addr, p->ai_addrlen) == -1) {
+            syslog(LOG_INFO, "bind %s", strerror(errno));
             close(server_fd);
             continue;
         }
 
         if (listen(server_fd, 10) == -1) {
+            syslog(LOG_INFO, "listen %s", strerror(errno));
             close(server_fd);
             continue;
         }
@@ -68,11 +76,9 @@ int main() {
 
     freeaddrinfo(result);
 
-    syslog(LOG_INFO, "Started");
-
     while (1) {
         int client_fd = accept(server_fd, NULL, NULL);
-        if (client_fd == -1) {
+        if (-1 == client_fd) {
             syslog(LOG_ERR, "accept %s", strerror(errno));
             continue;
         }
