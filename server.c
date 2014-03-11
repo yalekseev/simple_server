@@ -1,0 +1,84 @@
+#include "io.h"
+#include "server.h"
+#include "handler.h"
+
+#include <errno.h>
+#include <netdb.h>
+#include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h>
+#include <syslog.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
+int main() {
+    if (daemon(0, 0) == -1) {
+        perror("daemon");
+        exit(EXIT_FAILURE);
+    }
+
+    if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+        syslog(LOG_EMERG, "signal %s", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    if (signal(SIGHUP, SIG_IGN) == SIG_ERR) {
+        syslog(LOG_EMERG, "signal %s", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    struct addrinfo hints, *result;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+    int ret = getaddrinfo(NULL, SERVICE, &hints, &result);
+    if (ret != 0) {
+        syslog(LOG_EMERG, "getaddrinfo %s", gai_strerror(ret));
+        exit(EXIT_FAILURE);
+    }
+
+    int server_fd;
+    struct addrinfo *p;
+    for (p = result; p != NULL; p = p->ai_next) {
+        server_fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+        if (-1 == server_fd) {
+            continue;
+        }
+
+        if (bind(server_fd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(server_fd);
+            continue;
+        }
+
+        if (listen(server_fd, 10) == -1) {
+            close(server_fd);
+            continue;
+        }
+
+        break;
+    }
+
+    if (NULL == p) {
+        syslog(LOG_EMERG, "Failed to bind to any addresses");
+        exit(EXIT_FAILURE);
+    }
+
+    freeaddrinfo(result);
+
+    syslog(LOG_INFO, "Started");
+
+    while (1) {
+        int client_fd = accept(server_fd, NULL, NULL);
+        if (client_fd == -1) {
+            syslog(LOG_ERR, "accept %s", strerror(errno));
+            continue;
+        }
+
+        handle_request(client_fd);
+    }
+
+    return 0;
+}
