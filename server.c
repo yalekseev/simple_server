@@ -32,10 +32,10 @@ int main() {
 
     struct addrinfo hints, *result;
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_family = AF_UNSPEC;     /* Allow IPv4 or IPv6 */
     hints.ai_socktype = SOCK_STREAM; /* Datagram socket */
-    hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
-    hints.ai_protocol = 0;          /* Any protocol */
+    hints.ai_flags = AI_PASSIVE;     /* For wildcard IP address */
+    hints.ai_protocol = 0;           /* Any protocol */
     hints.ai_canonname = NULL;
     hints.ai_addr = NULL;
     hints.ai_next = NULL;
@@ -51,6 +51,13 @@ int main() {
         server_fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
         if (-1 == server_fd) {
             syslog(LOG_INFO, "socket %s", strerror(errno));
+            continue;
+        }
+
+        int optval = 1;
+        if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) == -1) {
+            syslog(LOG_INFO, "setsockopt %s", strerror(errno));
+            close(server_fd);
             continue;
         }
 
