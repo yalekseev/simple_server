@@ -67,7 +67,7 @@ int main() {
             continue;
         }
 
-        if (listen(server_fd, 10) == -1) {
+        if (listen(server_fd, BACKLOG) == -1) {
             syslog(LOG_INFO, "listen %s", strerror(errno));
             close(server_fd);
             continue;
