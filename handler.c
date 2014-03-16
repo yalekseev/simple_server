@@ -1,6 +1,7 @@
 #include "io.h"
 #include "handler.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <string.h>
 #include <syslog.h>
@@ -9,9 +10,9 @@
 #include <sys/types.h>
 #include <sys/sendfile.h>
 
-void *handle_request_helper(void *arg) {
-    int socket_fd = (int)arg;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
+void handle_single_request(int socket_fd) {
     char file_name[MAX_FILE_NAME + 1];
     ssize_t bytes_read = readn(socket_fd, file_name, MAX_FILE_NAME);
     if (bytes_read <= 0) {
@@ -33,30 +34,55 @@ void *handle_request_helper(void *arg) {
     close(socket_fd);
 }
 
-void handle_request(int socket_fd) {
-    int error_code;
+void handle_requests(int server_fd) {
+    while (1) {
+        pthread_mutex_lock(&mutex);
 
-    pthread_attr_t attr;
-    error_code = pthread_attr_init(&attr);
-    if (0 != error_code) {
-        syslog(LOG_ERR, "pthread_attr_init %s", strerror(error_code));
-        return;
+        int client_fd = accept(server_fd, NULL, NULL);
+        if (-1 == client_fd) {
+            syslog(LOG_ERR, "accept %s", strerror(errno));
+            continue;
+        }
+
+        pthread_mutex_unlock(&mutex);
+
+        handle_single_request(client_fd);
     }
+}
 
-    error_code = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    if (0 != error_code) {
-        syslog(LOG_ERR, "pthread_attr_setdetachstate %s", strerror(error_code));
-        return;
-    }
+void *handle_requests_thread(void *arg) {
+    int server_fd = (int)arg;
+    handle_requests(server_fd);
+    return NULL;
+}
 
-    pthread_t thread;
-    error_code = pthread_create(&thread, &attr, &handle_request_helper, (void *)socket_fd);
-    if (0 != error_code) {
-        syslog(LOG_ERR, "pthread_create %s", strerror(error_code));
-    }
+void start_handle_threads(int num_threads, int server_fd) {
+    int i;
+    for (i = 0; i < num_threads; ++i) {
+        int error_code;
 
-    error_code = pthread_attr_destroy(&attr);
-    if (0 != error_code) {
-        syslog(LOG_ERR, "pthread_attr_destroy %s", strerror(error_code));
+        pthread_attr_t attr;
+        error_code = pthread_attr_init(&attr);
+        if (0 != error_code) {
+            syslog(LOG_ERR, "pthread_attr_init %s", strerror(error_code));
+            return;
+        }
+
+        error_code = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+        if (0 != error_code) {
+            syslog(LOG_ERR, "pthread_attr_setdetachstate %s", strerror(error_code));
+            return;
+        }
+
+        pthread_t thread;
+        error_code = pthread_create(&thread, &attr, &handle_requests_thread, (void *)server_fd);
+        if (0 != error_code) {
+            syslog(LOG_ERR, "pthread_create %s", strerror(error_code));
+        }
+
+        error_code = pthread_attr_destroy(&attr);
+        if (0 != error_code) {
+            syslog(LOG_ERR, "pthread_attr_destroy %s", strerror(error_code));
+        }
     }
 }

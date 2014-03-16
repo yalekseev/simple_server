@@ -83,15 +83,9 @@ int main() {
 
     freeaddrinfo(result);
 
-    while (1) {
-        int client_fd = accept(server_fd, NULL, NULL);
-        if (-1 == client_fd) {
-            syslog(LOG_ERR, "accept %s", strerror(errno));
-            continue;
-        }
+    start_handle_threads(10, server_fd);
 
-        handle_request(client_fd);
-    }
+    handle_requests(server_fd);
 
     return 0;
 }
