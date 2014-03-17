@@ -1,7 +1,7 @@
 simple_server
 =============
 
-A simple file server
+A multithreaded server that accepts absolute file path as a request and returns file contents as a reply.
 
 Usage
 =====
