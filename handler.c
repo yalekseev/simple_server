@@ -3,6 +3,8 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 #include <pthread.h>
@@ -12,6 +14,8 @@
 #include <sys/sendfile.h>
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_t *threads;
+static int threads_count;
 
 void handle_single_request(int socket_fd) {
     /* set send/receive timeouts */
@@ -72,32 +76,28 @@ void *handle_requests_thread(void *arg) {
 }
 
 void start_handle_threads(int num_threads, int server_fd) {
+    assert(NULL == threads);
+    assert(0 == threads_count);
+
+    threads_count = num_threads;
+
+    threads = malloc(threads_count * sizeof(pthread_t));
+    assert(NULL != threads);
+
+    int error_code = 0;
+    pthread_attr_t thread_attr;
+    error_code = pthread_attr_init(&thread_attr);
+    assert(0 == error_code);
+
+    error_code = pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED);
+    assert(0 == error_code);
+
     int i;
-    for (i = 0; i < num_threads; ++i) {
-        int error_code;
-
-        pthread_attr_t attr;
-        error_code = pthread_attr_init(&attr);
-        if (0 != error_code) {
-            syslog(LOG_ERR, "pthread_attr_init %s", strerror(error_code));
-            return;
-        }
-
-        error_code = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-        if (0 != error_code) {
-            syslog(LOG_ERR, "pthread_attr_setdetachstate %s", strerror(error_code));
-            return;
-        }
-
-        pthread_t thread;
-        error_code = pthread_create(&thread, &attr, &handle_requests_thread, (void *)server_fd);
-        if (0 != error_code) {
-            syslog(LOG_ERR, "pthread_create %s", strerror(error_code));
-        }
-
-        error_code = pthread_attr_destroy(&attr);
-        if (0 != error_code) {
-            syslog(LOG_ERR, "pthread_attr_destroy %s", strerror(error_code));
-        }
+    for (i = 0; i < threads_count; ++i) {
+        error_code = pthread_create(&threads[i], &thread_attr, &handle_requests_thread, (void *)server_fd);
+        assert(0 == error_code);
     }
+
+    error_code = pthread_attr_destroy(&thread_attr);
+    assert(0 == error_code);
 }

@@ -83,7 +83,7 @@ int main() {
 
     freeaddrinfo(result);
 
-    start_handle_threads(10, server_fd);
+    start_handle_threads(NUM_THREADS, server_fd);
 
     handle_requests(server_fd);
 
