@@ -8,11 +8,26 @@
 #include <pthread.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/sendfile.h>
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void handle_single_request(int socket_fd) {
+    /* set send/receive timeouts */
+    struct timeval tv;
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
+        close(socket_fd);
+        return;
+    }
+
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) == -1) {
+        close(socket_fd);
+        return;
+    }
+
     char file_name[MAX_FILE_NAME + 1];
     ssize_t bytes_read = readn(socket_fd, file_name, MAX_FILE_NAME);
     if (bytes_read <= 0) {
