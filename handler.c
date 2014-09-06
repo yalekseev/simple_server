@@ -58,7 +58,11 @@ void handle_requests(int server_fd) {
         pthread_mutex_lock(&mutex);
 
         int client_fd = accept(server_fd, NULL, NULL);
-        if (-1 == client_fd) {
+        if (-1 == client_fd && errno == EINTR) {
+            continue;
+        } else if (-1 == client_fd && errno == ECONNABORTED) {
+            continue;
+        } else if (-1 == client_fd) {
             syslog(LOG_ERR, "accept %s", strerror(errno));
             continue;
         }
