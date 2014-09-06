@@ -67,7 +67,12 @@ int main() {
             continue;
         }
 
-        if (listen(server_fd, BACKLOG) == -1) {
+        int backlog = BACKLOG;
+        if (getenv("LISTENQ") != NULL) {
+            backlog = atoi(getenv("LISTENQ"));
+        }
+
+        if (listen(server_fd, backlog) == -1) {
             syslog(LOG_INFO, "listen %s", strerror(errno));
             close(server_fd);
             continue;
