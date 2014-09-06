@@ -47,10 +47,13 @@ void handle_single_request(int socket_fd) {
         return;
     }
 
-    sendfile(socket_fd, file_fd, NULL, MAX_FILE_SIZE);
+    if (-1 == sendfile(socket_fd, file_fd, NULL, MAX_FILE_SIZE)) {
+        syslog(LOG_ERR, "sendfile %s", strerror(errno));
+    }
 
-    close(file_fd);
-    close(socket_fd);
+    if (-1 == close(file_fd)) {
+        syslog(LOG_ERR, "close %s", strerror(errno));
+    }
 }
 
 void handle_requests(int server_fd) {
@@ -70,6 +73,10 @@ void handle_requests(int server_fd) {
         pthread_mutex_unlock(&mutex);
 
         handle_single_request(client_fd);
+
+        if (-1 == close(client_fd)) {
+            syslog(LOG_ERR, "close %s", strerror(errno));
+        }
     }
 }
 
