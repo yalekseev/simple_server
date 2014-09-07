@@ -88,9 +88,9 @@ int main() {
 
     freeaddrinfo(result);
 
-    start_handle_threads(NUM_THREADS, server_fd);
+    spawn_service_tasks(server_fd);
 
-    handle_requests(server_fd);
+    pause();
 
     return 0;
 }

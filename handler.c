@@ -13,11 +13,13 @@
 #include <sys/socket.h>
 #include <sys/sendfile.h>
 
+enum { NUM_THREADS = 12 };
+
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t *threads;
 static int threads_count;
 
-void handle_single_request(int socket_fd) {
+static void handle_single_request(int socket_fd) {
     /* set send/receive timeouts */
     struct timeval tv;
     tv.tv_sec = 5;
@@ -56,7 +58,7 @@ void handle_single_request(int socket_fd) {
     }
 }
 
-void handle_requests(int server_fd) {
+static void handle_requests(int server_fd) {
     while (1) {
         pthread_mutex_lock(&mutex);
 
@@ -86,11 +88,11 @@ void *handle_requests_thread(void *arg) {
     return NULL;
 }
 
-void start_handle_threads(int num_threads, int server_fd) {
+void spawn_service_tasks(int server_fd) {
     assert(NULL == threads);
     assert(0 == threads_count);
 
-    threads_count = num_threads;
+    threads_count = NUM_THREADS;
 
     threads = malloc(threads_count * sizeof(pthread_t));
     assert(NULL != threads);
