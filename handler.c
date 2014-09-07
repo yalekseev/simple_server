@@ -42,6 +42,9 @@ static void handle_single_request(int socket_fd) {
 
     int file_fd = open(file_name, O_RDONLY);
     if (-1 == file_fd) {
+        if (errno != ENOENT) {
+            syslog(LOG_ERR, "open %s", strerror(errno));
+        }
         return;
     }
 
