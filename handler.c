@@ -82,7 +82,7 @@ static void handle_requests(int server_fd) {
     }
 }
 
-void *handle_requests_thread(void *arg) {
+static void *handle_requests_thread(void *arg) {
     int server_fd = (int)arg;
     handle_requests(server_fd);
     return NULL;
