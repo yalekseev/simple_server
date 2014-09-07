@@ -90,7 +90,9 @@ int main() {
 
     spawn_service_tasks(server_fd);
 
-    pause();
+    while (1) {
+        pause();
+    }
 
     return 0;
 }
