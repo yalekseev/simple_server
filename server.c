@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <getopt.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +15,32 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-int main() {
+int main(int argc, char *argv[]) {
+    service_task_t task_type;
+
+    int c;
+    while ((c = getopt(argc, argv, "m:")) != -1) {
+        switch (c) {
+        case 'm':
+            if (strcmp(optarg, "thread") == 0) {
+                task_type = THREAD;
+            } else if (strcmp(optarg, "proc") == 0) {
+                task_type = PROC;
+            } else {
+                fprintf(stderr, "Unknown task mode: %s\n", optarg);
+                exit(EXIT_FAILURE);
+            }
+            break;
+        case '?':
+            // error found
+            fprintf(stderr, "Usage error\n");
+            exit(EXIT_FAILURE);
+        default:
+            fprintf(stderr, "Unkown argument: %c\n", c);
+            exit(EXIT_FAILURE);
+        }
+    }
+
     if (daemon(0, 0) == -1) {
         perror("daemon");
         exit(EXIT_FAILURE);
@@ -88,7 +114,7 @@ int main() {
 
     freeaddrinfo(result);
 
-    spawn_service_tasks(server_fd, THREAD);
+    spawn_service_tasks(server_fd, task_type);
 
     while (continue_service()) {
         pause();
