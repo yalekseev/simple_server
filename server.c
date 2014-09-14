@@ -16,7 +16,7 @@
 #include <sys/socket.h>
 
 int main(int argc, char *argv[]) {
-    service_task_t task_type;
+    service_task_t task_type = THREAD;
 
     int c;
     while ((c = getopt(argc, argv, "m:")) != -1) {
@@ -32,8 +32,7 @@ int main(int argc, char *argv[]) {
             }
             break;
         case '?':
-            // error found
-            fprintf(stderr, "Usage error\n");
+            fprintf(stderr, "Unknown option: %c\n", optopt);
             exit(EXIT_FAILURE);
         default:
             fprintf(stderr, "Unkown argument: %c\n", c);
