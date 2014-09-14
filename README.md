@@ -1,8 +1,8 @@
 simple_server
 =============
 
-A multithreaded server (with per-thread accept) that takes absolute file path
-as a request and returns file contents as a reply.
+A multitask server (with per-task accept) that takes absolute file path as a request
+and returns file contents as a reply. Tasks can be set to either threads or processes.
 
 How to build
 ============
