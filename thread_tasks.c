@@ -19,6 +19,7 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t *threads;
 static int threads_count;
 
+// TODO: Move common code to one place
 static void handle_single_request(int socket_fd) {
     /* set send/receive timeouts */
     struct timeval tv;

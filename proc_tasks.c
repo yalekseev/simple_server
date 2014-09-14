@@ -22,6 +22,7 @@ static pid_t procs[NUM_PROCS];
 
 static volatile sig_atomic_t terminate;
 
+// TODO: Move common code to one place
 static void handle_single_request(int socket_fd) {
     /* set send/receive timeouts */
     struct timeval tv;
@@ -146,9 +147,5 @@ void spawn_proc_tasks(int server_fd) {
 }
 
 int continue_proc_service() {
-    if (terminate) {
-        return 0;
-    } else {
-        return 1;
-    }
+    return !terminate;
 }
