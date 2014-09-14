@@ -1,6 +1,6 @@
 #include "io.h"
+#include "tasks.h"
 #include "server.h"
-#include "handler.h"
 
 #include <errno.h>
 #include <netdb.h>
@@ -88,9 +88,9 @@ int main() {
 
     freeaddrinfo(result);
 
-    spawn_service_tasks(server_fd);
+    spawn_service_tasks(server_fd, THREAD);
 
-    while (1) {
+    while (continue_service()) {
         pause();
     }
 

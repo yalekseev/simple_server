@@ -1,5 +1,5 @@
 #include "io.h"
-#include "handler.h"
+#include "thread_tasks.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -87,7 +87,7 @@ static void *handle_requests_thread(void *arg) {
     return NULL;
 }
 
-void spawn_service_tasks(int server_fd) {
+void spawn_thread_tasks(int server_fd) {
     assert(NULL == threads);
     assert(0 == threads_count);
 
@@ -112,4 +112,8 @@ void spawn_service_tasks(int server_fd) {
 
     error_code = pthread_attr_destroy(&thread_attr);
     assert(0 == error_code);
+}
+
+int continue_thread_service() {
+    return 1;
 }
