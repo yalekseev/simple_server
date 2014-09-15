@@ -4,13 +4,13 @@
 
 static service_task_t task_type;
 
-void spawn_service_tasks(int server_fd, service_task_t type) {
+void spawn_service_tasks(int server_fd, service_task_t type, int num_tasks) {
     task_type = type;
 
     if (task_type == THREAD) {
-        spawn_thread_tasks(server_fd);
+        spawn_thread_tasks(server_fd, num_tasks);
     } else if (task_type == PROC) {
-        spawn_proc_tasks(server_fd);
+        spawn_proc_tasks(server_fd, num_tasks);
     }
 }
 

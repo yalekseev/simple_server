@@ -11,11 +11,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-enum { NUM_THREADS = 12 };
-
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t *threads;
-static int threads_count;
+static int num_threads;
 
 static void handle_requests(int server_fd) {
     while (1) {
@@ -47,13 +45,13 @@ static void *handle_requests_thread(void *arg) {
     return NULL;
 }
 
-void spawn_thread_tasks(int server_fd) {
+void spawn_thread_tasks(int server_fd, int num_tasks) {
     assert(NULL == threads);
-    assert(0 == threads_count);
+    assert(0 == num_threads);
 
-    threads_count = NUM_THREADS;
+    num_threads = num_tasks;
 
-    threads = malloc(threads_count * sizeof(pthread_t));
+    threads = malloc(num_threads * sizeof(pthread_t));
     assert(NULL != threads);
 
     int error_code = 0;
@@ -65,7 +63,7 @@ void spawn_thread_tasks(int server_fd) {
     assert(0 == error_code);
 
     int i;
-    for (i = 0; i < threads_count; ++i) {
+    for (i = 0; i < num_threads; ++i) {
         error_code = pthread_create(&threads[i], &thread_attr, &handle_requests_thread, (void *)server_fd);
         assert(0 == error_code);
     }

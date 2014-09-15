@@ -1,4 +1,3 @@
-#include "io.h"
 #include "tasks.h"
 #include "server.h"
 
@@ -17,9 +16,10 @@
 
 int main(int argc, char *argv[]) {
     service_task_t task_type = THREAD;
+    int num_tasks = 12;
 
     int c;
-    while ((c = getopt(argc, argv, "m:")) != -1) {
+    while ((c = getopt(argc, argv, "m:w:")) != -1) {
         switch (c) {
         case 'm':
             if (strcmp(optarg, "thread") == 0) {
@@ -30,6 +30,9 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "Unknown task mode: %s\n", optarg);
                 exit(EXIT_FAILURE);
             }
+            break;
+        case 'w':
+            num_tasks = atoi(optarg);
             break;
         case '?':
             fprintf(stderr, "Unknown option: %c\n", optopt);
@@ -113,7 +116,7 @@ int main(int argc, char *argv[]) {
 
     freeaddrinfo(result);
 
-    spawn_service_tasks(server_fd, task_type);
+    spawn_service_tasks(server_fd, task_type, num_tasks);
 
     while (continue_service()) {
         pause();

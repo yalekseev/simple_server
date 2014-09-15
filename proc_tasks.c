@@ -3,6 +3,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <assert.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,10 +13,8 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 
-enum { NUM_PROCS = 12 };
-
-static pid_t procs[NUM_PROCS];
-
+static pid_t *procs;
+static int num_procs;
 static volatile sig_atomic_t terminate;
 
 static void handle_requests(int server_fd) {
@@ -63,7 +62,7 @@ static void handle_requests(int server_fd) {
 
 static void sig_term_handler(int signo) {
     int i;
-    for (i = 0; i < NUM_PROCS; ++i) {
+    for (i = 0; i < num_procs; ++i) {
         kill(procs[i], SIGTERM);
     }
 
@@ -82,7 +81,18 @@ static void sig_chld_handler(int signo) {
     }
 }
 
-void spawn_proc_tasks(int server_fd) {
+void spawn_proc_tasks(int server_fd, int num_tasks) {
+    assert(NULL == procs);
+    assert(0 == num_procs);
+
+    num_procs = num_tasks;
+
+    procs = malloc(sizeof(pid_t) * num_procs);
+    if (NULL == procs) {
+        syslog(LOG_EMERG, "Failed to allocate memory for procs");
+        exit(EXIT_FAILURE);
+    }
+
     // Register SIGCHLD handler prior to spawning processes
     struct sigaction sa;
     sa.sa_handler = &sig_chld_handler;
@@ -117,7 +127,7 @@ void spawn_proc_tasks(int server_fd) {
 
     // spawn child processes
     int i;
-    for (i = 0; i < NUM_PROCS; ++i) {
+    for (i = 0; i < num_procs; ++i) {
         pid_t pid;
         pid = fork();
 
