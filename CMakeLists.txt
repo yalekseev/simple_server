@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
 project (simple_server)
 find_package(Threads)
-add_executable (simple_server io.c tasks.c proc_tasks.c thread_tasks.c server.c)
+add_executable (simple_server io.c tasks.c common_tasks.c proc_tasks.c thread_tasks.c server.c)
 target_link_libraries(simple_server pthread)
