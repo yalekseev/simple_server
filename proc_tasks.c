@@ -62,6 +62,29 @@ static void handle_single_request(int socket_fd) {
 }
 
 static void handle_requests(int server_fd) {
+    // unblock SIGINT, SIGTERM
+    sigset_t sigset;
+    if (sigemptyset(&sigset) == -1) {
+        syslog(LOG_EMERG, "sigemptyset %s", strerror(errno));
+        _exit(EXIT_FAILURE);
+    }
+
+    if (sigaddset(&sigset, SIGINT) == -1) {
+        syslog(LOG_EMERG, "sigaddset %s", strerror(errno));
+        _exit(EXIT_FAILURE);
+    }
+
+    if (sigaddset(&sigset, SIGTERM) == -1) {
+        syslog(LOG_EMERG, "sigaddset %s", strerror(errno));
+        _exit(EXIT_FAILURE);
+    }
+
+    if (sigprocmask(SIG_UNBLOCK, &sigset, NULL) == -1) {
+        syslog(LOG_EMERG, "sigprocmask %s", strerror(errno));
+        _exit(EXIT_FAILURE);
+    }
+
+    // service client requests
     while (1) {
         int client_fd = accept(server_fd, NULL, NULL);
         if (-1 == client_fd && errno == EINTR) {
@@ -113,7 +136,29 @@ void spawn_proc_tasks(int server_fd) {
         exit(EXIT_FAILURE);
     }
 
-    // TODO: block SIGINT, SIGTERM
+    // block SIGINT, SIGTERM
+    sigset_t sigset;
+    if (sigemptyset(&sigset) == -1) {
+        syslog(LOG_EMERG, "sigemptyset %s", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    if (sigaddset(&sigset, SIGINT) == -1) {
+        syslog(LOG_EMERG, "sigaddset %s", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    if (sigaddset(&sigset, SIGTERM) == -1) {
+        syslog(LOG_EMERG, "sigaddset %s", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    if (sigprocmask(SIG_BLOCK, &sigset, NULL) == -1) {
+        syslog(LOG_EMERG, "sigprocmask %s", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
+    // spawn child processes
     int i;
     for (i = 0; i < NUM_PROCS; ++i) {
         pid_t pid;
@@ -124,10 +169,13 @@ void spawn_proc_tasks(int server_fd) {
         } else if (pid > 0) {
             procs[i] = pid;
         } else {
+            syslog(LOG_EMERG, "fork %s", strerror(errno));
             sig_term_handler(0);
+            exit(EXIT_FAILURE);
         }
     }
 
+    // Register SIGINT, SIGTERM handlers
     sigemptyset(&sa.sa_mask);
     sa.sa_handler = &sig_term_handler;
     sa.sa_flags = SA_RESTART;
@@ -135,15 +183,40 @@ void spawn_proc_tasks(int server_fd) {
 
     if (sigaction(SIGINT, &sa, NULL) == -1) {
         syslog(LOG_EMERG, "sigaction %s", strerror(errno));
+        sig_term_handler(0);
         exit(EXIT_FAILURE);
     }
 
     if (sigaction(SIGTERM, &sa, NULL) == -1) {
         syslog(LOG_EMERG, "sigaction %s", strerror(errno));
+        sig_term_handler(0);
         exit(EXIT_FAILURE);
     }
 
-    // TODO: unblock SIGINT, SIGTERM
+    // unblock SIGINT, SIGTERM
+    if (sigemptyset(&sigset) == -1) {
+        syslog(LOG_EMERG, "sigemptyset %s", strerror(errno));
+        sig_term_handler(0);
+        exit(EXIT_FAILURE);
+    }
+
+    if (sigaddset(&sigset, SIGINT) == -1) {
+        syslog(LOG_EMERG, "sigaddset %s", strerror(errno));
+        sig_term_handler(0);
+        exit(EXIT_FAILURE);
+    }
+
+    if (sigaddset(&sigset, SIGTERM) == -1) {
+        syslog(LOG_EMERG, "sigaddset %s", strerror(errno));
+        sig_term_handler(0);
+        exit(EXIT_FAILURE);
+    }
+
+    if (sigprocmask(SIG_UNBLOCK, &sigset, NULL) == -1) {
+        syslog(LOG_EMERG, "sigprocmask %s", strerror(errno));
+        sig_term_handler(0);
+        exit(EXIT_FAILURE);
+    }
 }
 
 int continue_proc_service() {
