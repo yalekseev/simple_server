@@ -18,9 +18,9 @@ int main(int argc, char *argv[]) {
     service_task_t task_type = THREAD;
     int num_tasks = 12;
 
-    int c;
-    while ((c = getopt(argc, argv, "m:w:")) != -1) {
-        switch (c) {
+    int opt;
+    while ((opt = getopt(argc, argv, "m:w:")) != -1) {
+        switch (opt) {
         case 'm':
             if (strcmp(optarg, "thread") == 0) {
                 task_type = THREAD;
@@ -38,9 +38,14 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Unknown option: %c\n", optopt);
             exit(EXIT_FAILURE);
         default:
-            fprintf(stderr, "Unkown argument: %c\n", c);
+            fprintf(stderr, "Failed to parse command line arguments\n");
             exit(EXIT_FAILURE);
         }
+    }
+
+    if (optind != argc) {
+        fprintf(stderr, "Some unexpected command line arguments are given\n");
+        exit(EXIT_FAILURE);
     }
 
     if (daemon(0, 0) == -1) {
