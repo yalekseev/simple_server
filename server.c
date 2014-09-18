@@ -17,9 +17,10 @@
 int main(int argc, char *argv[]) {
     service_task_t task_type = THREAD;
     int num_tasks = 12;
+    int daemonize = 1;
 
     int opt;
-    while ((opt = getopt(argc, argv, "m:w:")) != -1) {
+    while ((opt = getopt(argc, argv, "m:nw:")) != -1) {
         switch (opt) {
         case 'm':
             if (strcmp(optarg, "thread") == 0) {
@@ -30,6 +31,9 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "Unknown task mode: %s\n", optarg);
                 exit(EXIT_FAILURE);
             }
+            break;
+        case 'n':
+            daemonize = 0;
             break;
         case 'w':
             num_tasks = atoi(optarg);
@@ -48,9 +52,11 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (daemon(0, 0) == -1) {
-        perror("daemon");
-        exit(EXIT_FAILURE);
+    if (daemonize) {
+        if (daemon(0, 0) == -1) {
+            perror("daemon");
+            exit(EXIT_FAILURE);
+        }
     }
 
     if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
