@@ -1,5 +1,5 @@
-#include "common_tasks.h"
-#include "thread_tasks.h"
+#include "tasks_common.h"
+#include "tasks_thread.h"
 
 #include <errno.h>
 #include <fcntl.h>

@@ -1,6 +1,6 @@
 #include "tasks.h"
-#include "proc_tasks.h"
-#include "thread_tasks.h"
+#include "tasks_proc.h"
+#include "tasks_thread.h"
 
 static service_task_t task_type;
 

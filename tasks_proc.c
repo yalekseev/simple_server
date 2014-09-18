@@ -1,5 +1,5 @@
-#include "proc_tasks.h"
-#include "common_tasks.h"
+#include "tasks_proc.h"
+#include "tasks_common.h"
 
 #include <errno.h>
 #include <fcntl.h>
