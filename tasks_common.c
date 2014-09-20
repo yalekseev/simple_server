@@ -1,4 +1,5 @@
 #include "io.h"
+#include "tasks_common.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -11,6 +12,10 @@
 #include <sys/sendfile.h>
 
 void handle_single_request(int socket_fd) {
+    service_file_request(socket_fd);
+}
+
+void service_file_request(int socket_fd) {
     /* set send/receive timeouts */
     struct timeval tv;
     tv.tv_sec = 5;
@@ -48,3 +53,30 @@ void handle_single_request(int socket_fd) {
     }
 }
 
+void service_echo_request(int socket_fd) {
+    /* set send/receive timeouts */
+    struct timeval tv;
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
+        return;
+    }
+
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) == -1) {
+        return;
+    }
+
+    while (1) {
+        char buf[BUF_SIZE + 1];
+        ssize_t bytes_read = readn(socket_fd, buf, BUF_SIZE);
+        if (bytes_read <= 0) {
+            return;
+        }
+
+        ssize_t bytes_written = writen(socket_fd, buf, bytes_read);
+        if (bytes_written != bytes_read) {
+            syslog(LOG_ERR, "writen %s", strerror(errno));
+            return;
+        }
+    }
+}
