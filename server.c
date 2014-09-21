@@ -52,11 +52,9 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (daemonize) {
-        if (daemon(0, 0) == -1) {
-            perror("daemon");
-            exit(EXIT_FAILURE);
-        }
+    if (daemonize && daemon(0, 0) == -1) {
+        perror("daemon");
+        exit(EXIT_FAILURE);
     }
 
     if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
@@ -64,7 +62,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (signal(SIGHUP, SIG_IGN) == SIG_ERR) {
+    if (daemonize && signal(SIGHUP, SIG_IGN) == SIG_ERR) {
         syslog(LOG_EMERG, "signal %s", strerror(errno));
         exit(EXIT_FAILURE);
     }
