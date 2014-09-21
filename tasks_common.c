@@ -12,7 +12,7 @@
 #include <sys/sendfile.h>
 
 void handle_single_request(int socket_fd) {
-    service_file_request(socket_fd);
+    service_echo_request(socket_fd);
 }
 
 void service_file_request(int socket_fd) {
@@ -67,8 +67,8 @@ void service_echo_request(int socket_fd) {
     }
 
     while (1) {
-        char buf[BUF_SIZE + 1];
-        ssize_t bytes_read = readn(socket_fd, buf, BUF_SIZE);
+        char buf[BUF_SIZE];
+        ssize_t bytes_read = read_line(socket_fd, buf, BUF_SIZE);
         if (bytes_read <= 0) {
             return;
         }
