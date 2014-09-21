@@ -15,8 +15,6 @@
 #include <sys/socket.h>
 #include <sys/sendfile.h>
 
-#include <stdio.h>
-
 static service_task_t service_task_type;
 static service_t service_type;
 
