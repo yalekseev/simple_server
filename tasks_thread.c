@@ -31,7 +31,7 @@ static void handle_requests(int server_fd) {
 
         pthread_mutex_unlock(&mutex);
 
-        handle_single_request(client_fd);
+        service_single_request(client_fd);
 
         if (-1 == close(client_fd)) {
             syslog(LOG_ERR, "close %s", strerror(errno));

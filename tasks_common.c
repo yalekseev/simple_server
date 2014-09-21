@@ -1,8 +1,12 @@
 #include "io.h"
+#include "tasks.h"
+#include "tasks_proc.h"
 #include "tasks_common.h"
+#include "tasks_thread.h"
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
@@ -11,8 +15,43 @@
 #include <sys/socket.h>
 #include <sys/sendfile.h>
 
-void handle_single_request(int socket_fd) {
-    service_echo_request(socket_fd);
+#include <stdio.h>
+
+static service_task_t service_task_type;
+static service_t service_type;
+
+void spawn_service_tasks(int server_fd, service_t type, service_task_t task_type, int num_tasks) {
+    service_type = type;
+    service_task_type = task_type;
+
+    if (service_task_type == THREAD) {
+        spawn_thread_tasks(server_fd, num_tasks);
+    } else if (service_task_type == PROC) {
+        spawn_proc_tasks(server_fd, num_tasks);
+    } else {
+        syslog(LOG_EMERG, "Unknown task_type: %d", (int)service_task_type);
+        exit(EXIT_FAILURE);
+    }
+}
+
+int continue_service() {
+    if (service_task_type == THREAD) {
+        return continue_thread_service();
+    } else if (service_task_type == PROC) {
+        return continue_proc_service();
+    } else {
+        return 0;
+    }
+}
+
+void service_single_request(int socket_fd) {
+    if (service_type == SERVICE_ECHO) {
+        service_echo_request(socket_fd);
+    } else if (service_type == SERVICE_FILE) {
+        service_file_request(socket_fd);
+    } else {
+        syslog(LOG_ERR, "Unkown service_type: %d", (int)service_type);
+    }
 }
 
 void service_file_request(int socket_fd) {

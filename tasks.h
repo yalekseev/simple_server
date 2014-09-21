@@ -5,6 +5,11 @@ typedef enum {
     PROC = 1
 } service_task_t;
 
-extern void spawn_service_tasks(int server_fd, service_task_t type, int num_tasks);
+typedef enum {
+    SERVICE_ECHO = 0,
+    SERVICE_FILE = 1
+} service_t;
+
+extern void spawn_service_tasks(int server_fd, service_t type, service_task_t task_type, int num_tasks);
 
 extern int continue_service();

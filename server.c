@@ -15,18 +15,19 @@
 #include <sys/socket.h>
 
 int main(int argc, char *argv[]) {
-    service_task_t task_type = THREAD;
+    service_task_t service_task_type = THREAD;
+    service_t service_type = SERVICE_ECHO;
     int num_tasks = 12;
     int daemonize = 1;
 
     int opt;
-    while ((opt = getopt(argc, argv, "m:nw:")) != -1) {
+    while ((opt = getopt(argc, argv, "m:ns:w:")) != -1) {
         switch (opt) {
         case 'm':
             if (strcmp(optarg, "thread") == 0) {
-                task_type = THREAD;
+                service_task_type = THREAD;
             } else if (strcmp(optarg, "proc") == 0) {
-                task_type = PROC;
+                service_task_type = PROC;
             } else {
                 fprintf(stderr, "Unknown task mode: %s\n", optarg);
                 exit(EXIT_FAILURE);
@@ -35,6 +36,15 @@ int main(int argc, char *argv[]) {
         case 'n':
             daemonize = 0;
             break;
+        case 's':
+            if (strcmp(optarg, "echo") == 0) {
+                service_type = SERVICE_ECHO;
+            } else if (strcmp(optarg, "file") == 0) {
+                service_type = SERVICE_FILE;
+            } else {
+                fprintf(stderr, "Unknown service type: %s\n", optarg);
+                exit(EXIT_FAILURE);
+            }
         case 'w':
             num_tasks = atoi(optarg);
             break;
@@ -125,7 +135,7 @@ int main(int argc, char *argv[]) {
 
     freeaddrinfo(result);
 
-    spawn_service_tasks(server_fd, task_type, num_tasks);
+    spawn_service_tasks(server_fd, service_type, service_task_type, num_tasks);
 
     while (continue_service()) {
         pause();

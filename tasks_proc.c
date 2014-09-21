@@ -13,9 +13,9 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 
-static pid_t *procs;
+static sig_atomic_t terminate;
 static int num_procs;
-static volatile sig_atomic_t terminate;
+static pid_t *procs;
 
 static void handle_requests(int server_fd) {
     // unblock SIGINT, SIGTERM
@@ -52,7 +52,7 @@ static void handle_requests(int server_fd) {
             continue;
         }
 
-        handle_single_request(client_fd);
+        service_single_request(client_fd);
 
         if (-1 == close(client_fd)) {
             syslog(LOG_ERR, "close %s", strerror(errno));
