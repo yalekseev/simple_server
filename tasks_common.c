@@ -162,7 +162,10 @@ static void service_tcp_echo_request(int socket_fd) {
 
     while (1) {
         ssize_t bytes_read = read_line(socket_fd, buf, BUF_SIZE);
-        if (bytes_read <= 0) {
+        if (bytes_read == -1) {
+            syslog(LOG_ERR, "read_line %s", strerror(errno));
+            return;
+        } else if (0 == bytes_read) {
             return;
         }
 
