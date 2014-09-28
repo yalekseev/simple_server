@@ -17,7 +17,7 @@ static sig_atomic_t terminate;
 static int num_procs;
 static pid_t *procs;
 
-static void handle_requests(int server_fd) {
+static void service_tcp_requests(int server_fd) {
     // unblock SIGINT, SIGTERM
     sigset_t sigset;
     if (sigemptyset(&sigset) == -1) {
@@ -52,11 +52,40 @@ static void handle_requests(int server_fd) {
             continue;
         }
 
-        service_single_request(client_fd);
+        service_single_tcp_request(client_fd);
 
         if (-1 == close(client_fd)) {
             syslog(LOG_ERR, "close %s", strerror(errno));
         }
+    }
+}
+
+static void service_udp_requests(int server_fd) {
+    // unblock SIGINT, SIGTERM
+    sigset_t sigset;
+    if (sigemptyset(&sigset) == -1) {
+        syslog(LOG_EMERG, "sigemptyset %s", strerror(errno));
+        _exit(EXIT_FAILURE);
+    }
+
+    if (sigaddset(&sigset, SIGINT) == -1) {
+        syslog(LOG_EMERG, "sigaddset %s", strerror(errno));
+        _exit(EXIT_FAILURE);
+    }
+
+    if (sigaddset(&sigset, SIGTERM) == -1) {
+        syslog(LOG_EMERG, "sigaddset %s", strerror(errno));
+        _exit(EXIT_FAILURE);
+    }
+
+    if (sigprocmask(SIG_UNBLOCK, &sigset, NULL) == -1) {
+        syslog(LOG_EMERG, "sigprocmask %s", strerror(errno));
+        _exit(EXIT_FAILURE);
+    }
+
+    // service client requests
+    while (1) {
+        service_single_udp_request(server_fd);
     }
 }
 
@@ -81,11 +110,12 @@ static void sig_chld_handler(int signo) {
     }
 }
 
-void spawn_proc_tasks(int server_fd, int num_tasks) {
+void spawn_proc_tasks(int tcp_service_fd, int udp_service_fd, int num_tasks) {
     assert(NULL == procs);
     assert(0 == num_procs);
 
-    num_procs = num_tasks;
+    // 1 proc is to service udp requests
+    num_procs = num_tasks + 1;
 
     procs = malloc(sizeof(pid_t) * num_procs);
     if (NULL == procs) {
@@ -132,7 +162,11 @@ void spawn_proc_tasks(int server_fd, int num_tasks) {
         pid = fork();
 
         if (pid == 0) {
-            handle_requests(server_fd);
+            if (i + 1 == num_procs) {
+                service_udp_requests(udp_service_fd);
+            } else {
+                service_tcp_requests(tcp_service_fd);
+            }
         } else if (pid > 0) {
             procs[i] = pid;
         } else {

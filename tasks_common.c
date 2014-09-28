@@ -15,17 +15,22 @@
 #include <sys/socket.h>
 #include <sys/sendfile.h>
 
+static void service_tcp_file_request(int socket_fd);
+static void service_udp_file_request(int socket_fd);
+static void service_tcp_echo_request(int socket_fd);
+static void service_udp_echo_request(int socket_fd);
+
 static service_task_t service_task_type;
 static service_t service_type;
 
-void spawn_service_tasks(int server_fd, service_t type, service_task_t task_type, int num_tasks) {
+void spawn_service_tasks(int tcp_service_fd, int udp_service_fd, service_t type, service_task_t task_type, int num_tasks) {
     service_type = type;
     service_task_type = task_type;
 
     if (service_task_type == THREAD) {
-        spawn_thread_tasks(server_fd, num_tasks);
+        spawn_thread_tasks(tcp_service_fd, udp_service_fd, num_tasks);
     } else if (service_task_type == PROC) {
-        spawn_proc_tasks(server_fd, num_tasks);
+        spawn_proc_tasks(tcp_service_fd, udp_service_fd, num_tasks);
     } else {
         syslog(LOG_EMERG, "Unknown task_type: %d", (int)service_task_type);
         exit(EXIT_FAILURE);
@@ -38,21 +43,32 @@ int continue_service() {
     } else if (service_task_type == PROC) {
         return continue_proc_service();
     } else {
+        syslog(LOG_EMERG, "Unknown task_type: %d", (int)service_task_type);
         return 0;
     }
 }
 
-void service_single_request(int socket_fd) {
+void service_single_tcp_request(int socket_fd) {
     if (service_type == SERVICE_ECHO) {
-        service_echo_request(socket_fd);
+        service_tcp_echo_request(socket_fd);
     } else if (service_type == SERVICE_FILE) {
-        service_file_request(socket_fd);
+        service_tcp_file_request(socket_fd);
     } else {
         syslog(LOG_ERR, "Unkown service_type: %d", (int)service_type);
     }
 }
 
-void service_file_request(int socket_fd) {
+void service_single_udp_request(int socket_fd) {
+    if (service_type == SERVICE_ECHO) {
+        service_udp_echo_request(socket_fd);
+    } else if (service_type == SERVICE_FILE) {
+        service_udp_file_request(socket_fd);
+    } else {
+        syslog(LOG_ERR, "Unkown service_type: %d", (int)service_type);
+    }
+}
+
+static void service_tcp_file_request(int socket_fd) {
     /* set send/receive timeouts */
     struct timeval tv;
     tv.tv_sec = 5;
@@ -90,7 +106,46 @@ void service_file_request(int socket_fd) {
     }
 }
 
-void service_echo_request(int socket_fd) {
+static void service_udp_file_request(int socket_fd) {
+    struct sockaddr_storage addr;
+    socklen_t len = sizeof(addr);
+
+    char file_name[MAX_FILE_NAME + 1];
+    ssize_t bytes_read = recvfrom(socket_fd, file_name, MAX_FILE_NAME, 0, (struct sockaddr *)&addr, &len);
+    if (bytes_read == -1) {
+        syslog(LOG_ERR, "recvfrom %s", strerror(errno));
+        return;
+    }
+
+    file_name[bytes_read] = '\0';
+
+    int file_fd = open(file_name, O_RDONLY);
+    if (-1 == file_fd) {
+        if (errno != ENOENT) {
+            syslog(LOG_ERR, "open %s", strerror(errno));
+        }
+        return;
+    }
+
+    if (connect(socket_fd, (struct sockaddr *)&addr, len) == -1) {
+        syslog(LOG_ERR, "connect %s", strerror(errno));
+        return;
+    }
+
+    if (-1 == sendfile(socket_fd, file_fd, NULL, MAX_FILE_SIZE)) {
+        syslog(LOG_ERR, "sendfile %s", strerror(errno));
+    }
+
+    if (-1 == close(file_fd)) {
+        syslog(LOG_ERR, "close %s", strerror(errno));
+    }
+
+    // disconnect
+    ((struct sockaddr *)&addr)->sa_family = AF_UNSPEC;
+    connect(socket_fd, (struct sockaddr *)&addr, len);
+}
+
+static void service_tcp_echo_request(int socket_fd) {
     /* set send/receive timeouts */
     struct timeval tv;
     tv.tv_sec = 5;
@@ -103,8 +158,9 @@ void service_echo_request(int socket_fd) {
         return;
     }
 
+    char buf[BUF_SIZE];
+
     while (1) {
-        char buf[BUF_SIZE];
         ssize_t bytes_read = read_line(socket_fd, buf, BUF_SIZE);
         if (bytes_read <= 0) {
             return;
@@ -115,5 +171,23 @@ void service_echo_request(int socket_fd) {
             syslog(LOG_ERR, "writen %s", strerror(errno));
             return;
         }
+    }
+}
+
+static void service_udp_echo_request(int socket_fd) {
+    struct sockaddr_storage addr;
+    socklen_t len = sizeof(addr);
+    char buf[BUF_SIZE];
+
+    ssize_t bytes_read = recvfrom(socket_fd, buf, BUF_SIZE, 0, (struct sockaddr *)&addr, &len);
+    if (bytes_read == -1) {
+        syslog(LOG_ERR, "recvfrom %s", strerror(errno));
+        return;
+    }
+
+    ssize_t bytes_written = sendto(socket_fd, buf, bytes_read, 0, (struct sockaddr *)&addr, len);
+    if (bytes_written != bytes_read) {
+        syslog(LOG_ERR, "sendto %s", strerror(errno));
+        return;
     }
 }

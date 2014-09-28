@@ -15,7 +15,7 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t *threads;
 static int num_threads;
 
-static void handle_requests(int server_fd) {
+static void service_tcp_requests(int server_fd) {
     while (1) {
         pthread_mutex_lock(&mutex);
 
@@ -31,7 +31,7 @@ static void handle_requests(int server_fd) {
 
         pthread_mutex_unlock(&mutex);
 
-        service_single_request(client_fd);
+        service_single_tcp_request(client_fd);
 
         if (-1 == close(client_fd)) {
             syslog(LOG_ERR, "close %s", strerror(errno));
@@ -39,17 +39,30 @@ static void handle_requests(int server_fd) {
     }
 }
 
-static void *handle_requests_thread(void *arg) {
+static void *service_tcp_requests_thread(void *arg) {
     int server_fd = (int)arg;
-    handle_requests(server_fd);
+    service_tcp_requests(server_fd);
     return NULL;
 }
 
-void spawn_thread_tasks(int server_fd, int num_tasks) {
+static void service_udp_requests(int server_fd) {
+    while (1) {
+        service_single_udp_request(server_fd);
+    }
+}
+
+static void *service_udp_requests_thread(void *arg) {
+    int server_fd = (int)arg;
+    service_udp_requests(server_fd);
+    return NULL;
+}
+
+void spawn_thread_tasks(int tcp_service_fd, int udp_service_fd, int num_tasks) {
     assert(NULL == threads);
     assert(0 == num_threads);
 
-    num_threads = num_tasks;
+    // 1 thread is to service udp requests
+    num_threads = num_tasks + 1;
 
     threads = malloc(num_threads * sizeof(pthread_t));
     assert(NULL != threads);
@@ -64,7 +77,11 @@ void spawn_thread_tasks(int server_fd, int num_tasks) {
 
     int i;
     for (i = 0; i < num_threads; ++i) {
-        error_code = pthread_create(&threads[i], &thread_attr, &handle_requests_thread, (void *)server_fd);
+        if (i + 1 == num_threads) {
+            error_code = pthread_create(&threads[i], &thread_attr, &service_udp_requests_thread, (void *)tcp_service_fd);
+        } else {
+            error_code = pthread_create(&threads[i], &thread_attr, &service_tcp_requests_thread, (void *)tcp_service_fd);
+        }
         assert(0 == error_code);
     }
 
