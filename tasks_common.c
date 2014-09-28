@@ -83,7 +83,8 @@ static void service_tcp_file_request(int socket_fd) {
 
     char file_name[MAX_FILE_NAME + 1];
     ssize_t bytes_read = readn(socket_fd, file_name, MAX_FILE_NAME);
-    if (bytes_read <= 0) {
+    if (-1 == bytes_read) {
+        syslog(LOG_ERR, "readn %s", strerror(errno));
         return;
     }
 
@@ -112,7 +113,7 @@ static void service_udp_file_request(int socket_fd) {
 
     char file_name[MAX_FILE_NAME + 1];
     ssize_t bytes_read = recvfrom(socket_fd, file_name, MAX_FILE_NAME, 0, (struct sockaddr *)&addr, &len);
-    if (bytes_read == -1) {
+    if (-1 == bytes_read) {
         syslog(LOG_ERR, "recvfrom %s", strerror(errno));
         return;
     }
@@ -127,22 +128,27 @@ static void service_udp_file_request(int socket_fd) {
         return;
     }
 
-    if (connect(socket_fd, (struct sockaddr *)&addr, len) == -1) {
-        syslog(LOG_ERR, "connect %s", strerror(errno));
-        return;
-    }
+    char buf[BUF_SIZE];
 
-    if (-1 == sendfile(socket_fd, file_fd, NULL, MAX_FILE_SIZE)) {
-        syslog(LOG_ERR, "sendfile %s", strerror(errno));
+    while (1) {
+        ssize_t bytes_read = readn(file_fd, buf, BUF_SIZE);
+        if (-1 == bytes_read) {
+            syslog(LOG_ERR, "readn %s", strerror(errno));
+            break;
+        } else if (0 == bytes_read) {
+            break;
+        }
+
+        ssize_t bytes_written = sendto(socket_fd, buf, bytes_read, 0, (struct sockaddr *)&addr, len);
+        if (bytes_written != bytes_read) {
+            syslog(LOG_ERR, "sendto %s", strerror(errno));
+            break;
+        }
     }
 
     if (-1 == close(file_fd)) {
         syslog(LOG_ERR, "close %s", strerror(errno));
     }
-
-    // disconnect
-    ((struct sockaddr *)&addr)->sa_family = AF_UNSPEC;
-    connect(socket_fd, (struct sockaddr *)&addr, len);
 }
 
 static void service_tcp_echo_request(int socket_fd) {
@@ -162,7 +168,7 @@ static void service_tcp_echo_request(int socket_fd) {
 
     while (1) {
         ssize_t bytes_read = read_line(socket_fd, buf, BUF_SIZE);
-        if (bytes_read == -1) {
+        if (-1 == bytes_read) {
             syslog(LOG_ERR, "read_line %s", strerror(errno));
             return;
         } else if (0 == bytes_read) {
