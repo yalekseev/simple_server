@@ -108,6 +108,15 @@ static void service_tcp_file_request(int socket_fd) {
 }
 
 static void service_udp_file_request(int socket_fd) {
+    /* set send/receive timeouts */
+    struct timeval tv;
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) == -1) {
+        return;
+    }
+
     struct sockaddr_storage addr;
     socklen_t len = sizeof(addr);
 
@@ -184,6 +193,16 @@ static void service_tcp_echo_request(int socket_fd) {
 }
 
 static void service_udp_echo_request(int socket_fd) {
+    /* set send/receive timeouts */
+    struct timeval tv;
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) == -1) {
+        return;
+    }
+
+    char file_name[MAX_FILE_NAME + 1];
     struct sockaddr_storage addr;
     socklen_t len = sizeof(addr);
     char buf[BUF_SIZE];

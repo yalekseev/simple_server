@@ -78,7 +78,7 @@ void spawn_thread_tasks(int tcp_service_fd, int udp_service_fd, int num_tasks) {
     int i;
     for (i = 0; i < num_threads; ++i) {
         if (i + 1 == num_threads) {
-            error_code = pthread_create(&threads[i], &thread_attr, &service_udp_requests_thread, (void *)tcp_service_fd);
+            error_code = pthread_create(&threads[i], &thread_attr, &service_udp_requests_thread, (void *)udp_service_fd);
         } else {
             error_code = pthread_create(&threads[i], &thread_attr, &service_tcp_requests_thread, (void *)tcp_service_fd);
         }
