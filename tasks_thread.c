@@ -40,6 +40,8 @@ static void service_tcp_requests(int server_fd) {
 }
 
 static void *service_tcp_requests_thread(void *arg) {
+    pthread_detach(pthread_self());
+
     int server_fd = (int)arg;
     service_tcp_requests(server_fd);
     return NULL;
@@ -52,6 +54,8 @@ static void service_udp_requests(int server_fd) {
 }
 
 static void *service_udp_requests_thread(void *arg) {
+    pthread_detach(pthread_self());
+
     int server_fd = (int)arg;
     service_udp_requests(server_fd);
     return NULL;
@@ -65,28 +69,24 @@ void spawn_thread_tasks(int tcp_service_fd, int udp_service_fd, int num_tasks) {
     num_threads = num_tasks + 1;
 
     threads = malloc(num_threads * sizeof(pthread_t));
-    assert(NULL != threads);
-
-    int error_code = 0;
-    pthread_attr_t thread_attr;
-    error_code = pthread_attr_init(&thread_attr);
-    assert(0 == error_code);
-
-    error_code = pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED);
-    assert(0 == error_code);
-
-    int i;
-    for (i = 0; i < num_threads; ++i) {
-        if (i + 1 == num_threads) {
-            error_code = pthread_create(&threads[i], &thread_attr, &service_udp_requests_thread, (void *)udp_service_fd);
-        } else {
-            error_code = pthread_create(&threads[i], &thread_attr, &service_tcp_requests_thread, (void *)tcp_service_fd);
-        }
-        assert(0 == error_code);
+    if (NULL == threads) {
+        syslog(LOG_EMERG, "malloc %s", strerror(errno));
+        exit(EXIT_FAILURE);
     }
 
-    error_code = pthread_attr_destroy(&thread_attr);
-    assert(0 == error_code);
+    int error_code = 0, i;
+    for (i = 0; i < num_threads; ++i) {
+        if (i + 1 == num_threads) {
+            error_code = pthread_create(&threads[i], NULL, &service_udp_requests_thread, (void *)udp_service_fd);
+        } else {
+            error_code = pthread_create(&threads[i], NULL, &service_tcp_requests_thread, (void *)tcp_service_fd);
+        }
+
+        if (0 != error_code) {
+            syslog(LOG_EMERG, "pthread_create %s", strerror(error_code));
+            exit(EXIT_FAILURE);
+        }
+    }
 }
 
 int continue_thread_service() {
