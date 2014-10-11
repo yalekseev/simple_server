@@ -40,7 +40,11 @@ static void service_tcp_requests(int server_fd) {
 }
 
 static void *service_tcp_requests_thread(void *arg) {
-    pthread_detach(pthread_self());
+    int error_code = pthread_detach(pthread_self());
+    if (0 != error_code) {
+        syslog(LOG_EMERG, "pthread_detach %s", strerror(error_code));
+        exit(EXIT_FAILURE);
+    }
 
     int server_fd = (int)arg;
     service_tcp_requests(server_fd);
